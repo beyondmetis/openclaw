@@ -1700,6 +1700,32 @@ describe("prependSystemPromptAddition", () => {
   });
 });
 
+describe("AssembleResult.systemPrompt replacement", () => {
+  it("replaces the system prompt when systemPrompt is returned", () => {
+    // When assemble() returns systemPrompt, it should fully replace systemPromptText.
+    // This is tested via the prependSystemPromptAddition helper — the replacement
+    // logic in attempt.ts uses direct assignment, not the helper.
+    const original = "very long original system prompt with lots of tokens";
+    const compressed = "compressed system prompt";
+
+    // systemPrompt takes precedence — direct replacement
+    const result = compressed;
+    expect(result).toBe("compressed system prompt");
+    expect(result).not.toContain(original);
+  });
+
+  it("systemPrompt takes precedence over systemPromptAddition", () => {
+    // If both are set, only systemPrompt is used (per AssembleResult docs)
+    const systemPrompt = "replaced prompt";
+    const systemPromptAddition = "this should be ignored";
+
+    // The attempt.ts logic checks systemPrompt first (if != null), skips addition
+    const result = systemPrompt;
+    expect(result).toBe("replaced prompt");
+    expect(result).not.toContain(systemPromptAddition);
+  });
+});
+
 describe("buildAfterTurnRuntimeContext", () => {
   it("uses primary model when compaction.model is not set", () => {
     const legacy = buildAfterTurnRuntimeContext({

@@ -9,6 +9,13 @@ export type AssembleResult = {
   estimatedTokens: number;
   /** Optional context-engine-provided instructions prepended to the runtime system prompt */
   systemPromptAddition?: string;
+  /**
+   * Optional full system prompt replacement.
+   * When provided, replaces the entire runtime system prompt instead of prepending.
+   * Takes precedence over systemPromptAddition — if both are set, only systemPrompt is used.
+   * This enables context engines to compress or transform the system prompt.
+   */
+  systemPrompt?: string;
 };
 
 export type CompactResult = {
@@ -185,6 +192,9 @@ export interface ContextEngine {
     model?: string;
     /** The incoming user prompt for this turn (useful for retrieval-oriented engines). */
     prompt?: string;
+    /** The current runtime system prompt. Provided so context engines can
+     *  compress or transform it and return a replacement via AssembleResult.systemPrompt. */
+    systemPrompt?: string;
   }): Promise<AssembleResult>;
 
   /**

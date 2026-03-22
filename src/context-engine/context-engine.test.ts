@@ -787,6 +787,63 @@ describe("assemble() prompt forwarding", () => {
     expect(Object.keys(calls[0] as object)).not.toContain("prompt");
   });
 
+  it("forwards systemPrompt to the underlying engine", async () => {
+    const engineId = `sysprompt-fwd-${Date.now().toString(36)}`;
+    const calls: Array<Record<string, unknown>> = [];
+    registerContextEngine(engineId, () => ({
+      info: { id: engineId, name: "SysPrompt Tracker", version: "0.0.0" },
+      async ingest() {
+        return { ingested: false };
+      },
+      async assemble(params) {
+        calls.push({ ...params });
+        return { messages: params.messages, estimatedTokens: 0 };
+      },
+      async compact() {
+        return { ok: true, compacted: false };
+      },
+    }));
+
+    const engine = await resolveContextEngine(configWithSlot(engineId));
+    await engine.assemble({
+      sessionId: "s1",
+      messages: [makeMockMessage("user", "hello")],
+      systemPrompt: "You are a helpful assistant.",
+    });
+
+    expect(calls).toHaveLength(1);
+    expect(calls[0]).toHaveProperty("systemPrompt", "You are a helpful assistant.");
+  });
+
+  it("allows engine to return full systemPrompt replacement", async () => {
+    const engineId = `sysprompt-replace-${Date.now().toString(36)}`;
+    registerContextEngine(engineId, () => ({
+      info: { id: engineId, name: "SysPrompt Replacer", version: "0.0.0" },
+      async ingest() {
+        return { ingested: false };
+      },
+      async assemble(params) {
+        return {
+          messages: params.messages,
+          estimatedTokens: 10,
+          systemPrompt: "compressed: " + (params.systemPrompt ?? ""),
+        };
+      },
+      async compact() {
+        return { ok: true, compacted: false };
+      },
+    }));
+
+    const engine = await resolveContextEngine(configWithSlot(engineId));
+    const result = await engine.assemble({
+      sessionId: "s1",
+      messages: [makeMockMessage("user", "hello")],
+      systemPrompt: "very long system prompt here",
+    });
+
+    expect(result.systemPrompt).toBe("compressed: very long system prompt here");
+  });
+
   it("retries strict legacy assemble without sessionKey and prompt", async () => {
     const engineId = `prompt-legacy-${Date.now().toString(36)}`;
     const strictEngine = new LegacyAssembleStrictEngine();

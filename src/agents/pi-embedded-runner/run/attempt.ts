@@ -2426,12 +2426,20 @@ export async function runEmbeddedAttempt(
               messages: activeSession.messages,
               tokenBudget: params.contextTokenBudget,
               model: params.modelId,
+              systemPrompt: systemPromptText,
               ...(params.prompt !== undefined ? { prompt: params.prompt } : {}),
             });
             if (assembled.messages !== activeSession.messages) {
               activeSession.agent.replaceMessages(assembled.messages);
             }
-            if (assembled.systemPromptAddition) {
+            if (assembled.systemPrompt != null) {
+              // Full system prompt replacement — takes precedence over systemPromptAddition
+              systemPromptText = assembled.systemPrompt;
+              applySystemPromptOverrideToSession(activeSession, systemPromptText);
+              log.debug(
+                `context engine: replaced system prompt (${assembled.systemPrompt.length} chars)`,
+              );
+            } else if (assembled.systemPromptAddition) {
               systemPromptText = prependSystemPromptAddition({
                 systemPrompt: systemPromptText,
                 systemPromptAddition: assembled.systemPromptAddition,
